@@ -35,23 +35,29 @@ func webhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sliceUrl := strings.Split(r.URL.Path, "/")
+	sliceURL := strings.Split(r.URL.Path, "/")
 
-	if len(sliceUrl) != 5 || sliceUrl[1] != "update" {
+	if len(sliceURL) != 5 || sliceURL[1] != "update" {
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 
-	metricsType := sliceUrl[2]
-	metricsName := sliceUrl[3]
-	metricsValue := sliceUrl[4]
+	metricsType := sliceURL[2]
+	metricsName := sliceURL[3]
+	metricsValue := sliceURL[4]
 	if metricsType == "counter" {
 		if value, err := strconv.ParseInt(metricsValue, 10, 64); err == nil {
 			storage.counterData[metricsName] += counter(value)
+		} else {
+			w.WriteHeader(http.StatusBadRequest)
+			return
 		}
 	} else if metricsType == "gauge" {
 		if value, err := strconv.ParseFloat(metricsValue, 64); err == nil {
 			storage.gaugeData[metricsName] = gauge(value)
+		} else {
+			w.WriteHeader(http.StatusBadRequest)
+			return
 		}
 	} else {
 		w.WriteHeader(http.StatusBadRequest)

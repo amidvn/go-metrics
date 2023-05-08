@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"fmt"
 	"math/rand"
 	"net/http"
 	"reflect"
@@ -59,7 +58,6 @@ func main() {
 		for k, v := range valuesGauge {
 			post("gauge", k, strconv.FormatFloat(v, 'f', -1, 64))
 		}
-		fmt.Println(pollCount)
 		post("counter", "PollCount", strconv.FormatUint(pollCount, 10))
 		post("gauge", "RandomValue", strconv.FormatFloat(rand.Float64(), 'f', -1, 64))
 		pollCount = 0
@@ -93,8 +91,9 @@ func getMetrics() {
 
 func post(t string, mn string, sValue string) {
 	r := bytes.NewReader([]byte{})
-	_, err := http.Post("http://127.0.0.1:8080/update/"+t+"/"+mn+"/"+sValue, "text/plain", r)
+	resp, err := http.Post("http://127.0.0.1:8080/update/"+t+"/"+mn+"/"+sValue, "text/plain", r)
 	if err != nil {
 		panic(err)
 	}
+	defer resp.Body.Close()
 }

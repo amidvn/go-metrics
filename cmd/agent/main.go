@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"flag"
+	"fmt"
 	"math/rand"
 	"net/http"
 	"reflect"
@@ -10,8 +12,9 @@ import (
 	"time"
 )
 
-const pollInterval = 2
-const reportInterval = 10
+var pollInterval int
+var reportInterval int
+var addressServer string
 
 var metrics = map[string]bool{
 	"Alloc":         true,
@@ -49,10 +52,14 @@ var valuesGauge = map[string]float64{}
 var pollCount uint64
 
 func main() {
+	flag.StringVar(&addressServer, "a", "localhost:8080", "address and port to run server")
+	flag.IntVar(&reportInterval, "r", 10, "report interval in seconds")
+	flag.IntVar(&pollInterval, "p", 2, "poll interval in seconds")
+	flag.Parse()
 
 	go getMetrics()
 
-	time.Sleep(reportInterval * time.Second)
+	time.Sleep(time.Duration(reportInterval) * time.Second)
 
 	for {
 		for k, v := range valuesGauge {
@@ -61,7 +68,7 @@ func main() {
 		post("counter", "PollCount", strconv.FormatUint(pollCount, 10))
 		post("gauge", "RandomValue", strconv.FormatFloat(rand.Float64(), 'f', -1, 64))
 		pollCount = 0
-		time.Sleep(reportInterval * time.Second)
+		time.Sleep(time.Duration(reportInterval) * time.Second)
 	}
 }
 
@@ -85,13 +92,13 @@ func getMetrics() {
 				valuesGauge[metricsName] = metricsFloat
 			}
 		}
-		time.Sleep(pollInterval * time.Second)
+		time.Sleep(time.Duration(pollInterval) * time.Second)
 	}
 }
 
 func post(t string, mn string, sValue string) {
 	r := bytes.NewReader([]byte{})
-	resp, err := http.Post("http://127.0.0.1:8080/update/"+t+"/"+mn+"/"+sValue, "text/plain", r)
+	resp, err := http.Post(fmt.Sprintf("%s/update/%s/%s/%s", addressServer, t, mn, sValue), "text/plain", r)
 	if err != nil {
 		panic(err)
 	}

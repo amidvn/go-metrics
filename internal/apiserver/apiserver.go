@@ -1,6 +1,7 @@
 package apiserver
 
 import (
+	"flag"
 	"log"
 
 	"github.com/amidvn/go-metrics/internal/handlers"
@@ -11,12 +12,16 @@ import (
 type APIServer struct {
 	storage *storage.MemStorage
 	echo    *echo.Echo
+	address string
 }
 
 func New() *APIServer {
 	a := &APIServer{}
 	a.storage = storage.New()
 	a.echo = echo.New()
+	fl := flag.String("a", "localhost:8080", "address and port to run server")
+	flag.Parse()
+	a.address = *fl
 
 	a.echo.GET("/", handlers.AllMetrics(a.storage))
 	a.echo.GET("/value/:typeM/:nameM", handlers.MetricsValue(a.storage))
@@ -26,7 +31,7 @@ func New() *APIServer {
 }
 
 func (a *APIServer) Start() error {
-	err := a.echo.Start(":8080")
+	err := a.echo.Start(a.address)
 	if err != nil {
 		log.Fatal(err)
 	}

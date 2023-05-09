@@ -1,61 +1,35 @@
 package apiserver
 
 import (
-	"net/http"
-	"strconv"
-	"strings"
+	"log"
 
+	"github.com/amidvn/go-metrics/internal/handlers"
 	"github.com/amidvn/go-metrics/internal/storage"
+	"github.com/labstack/echo/v4"
 )
 
 type APIServer struct {
 	storage *storage.MemStorage
+	echo    *echo.Echo
 }
 
 func New() *APIServer {
-	return &APIServer{storage.New()}
+	a := &APIServer{}
+	a.storage = storage.New()
+	a.echo = echo.New()
+
+	a.echo.GET("/", handlers.AllMetrics(a.storage))
+	a.echo.GET("/value/:typeM/:nameM", handlers.MetricsValue(a.storage))
+	a.echo.POST("/update/:typeM/:nameM/:valueM", handlers.PostWebhook(a.storage))
+
+	return a
 }
 
-func (s *APIServer) Start() error {
-	return http.ListenAndServe(`:8080`, http.HandlerFunc(s.webhook()))
-}
-
-func (s *APIServer) webhook() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			w.WriteHeader(http.StatusMethodNotAllowed)
-			return
-		}
-
-		sliceURL := strings.Split(r.URL.Path, "/")
-
-		if len(sliceURL) != 5 || sliceURL[1] != "update" {
-			w.WriteHeader(http.StatusNotFound)
-			return
-		}
-
-		metricsType := sliceURL[2]
-		metricsName := sliceURL[3]
-		metricsValue := sliceURL[4]
-		if metricsType == "counter" {
-			if value, err := strconv.ParseInt(metricsValue, 10, 64); err == nil {
-				s.storage.UpdateCounter(metricsName, value)
-			} else {
-				w.WriteHeader(http.StatusBadRequest)
-				return
-			}
-		} else if metricsType == "gauge" {
-			if value, err := strconv.ParseFloat(metricsValue, 64); err == nil {
-				s.storage.UpdateGauge(metricsName, value)
-			} else {
-				w.WriteHeader(http.StatusBadRequest)
-				return
-			}
-		} else {
-			w.WriteHeader(http.StatusBadRequest)
-			return
-		}
-
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+func (a *APIServer) Start() error {
+	err := a.echo.Start(":8080")
+	if err != nil {
+		log.Fatal(err)
 	}
+
+	return nil
 }

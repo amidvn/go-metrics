@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/rand"
 	"net/http"
+	"os"
 	"reflect"
 	"runtime"
 	"strconv"
@@ -52,10 +53,7 @@ var valuesGauge = map[string]float64{}
 var pollCount uint64
 
 func main() {
-	flag.StringVar(&addressServer, "a", "localhost:8080", "address and port to run server")
-	flag.IntVar(&reportInterval, "r", 10, "report interval in seconds")
-	flag.IntVar(&pollInterval, "p", 2, "poll interval in seconds")
-	flag.Parse()
+	getParameters()
 
 	go getMetrics()
 
@@ -70,6 +68,27 @@ func main() {
 		pollCount = 0
 		time.Sleep(time.Duration(reportInterval) * time.Second)
 	}
+}
+
+func getParameters() {
+	if envRunAddr := os.Getenv("ADDRESS"); envRunAddr != "" {
+		addressServer = envRunAddr
+	} else {
+		flag.StringVar(&addressServer, "a", "localhost:8080", "address and port to run server")
+	}
+
+	if envRunAddr := os.Getenv("REPORT_INTERVAL"); envRunAddr != "" {
+		reportInterval, _ = strconv.Atoi(envRunAddr)
+	} else {
+		flag.IntVar(&reportInterval, "r", 10, "report interval in seconds")
+	}
+
+	if envRunAddr := os.Getenv("POLL_INTERVAL"); envRunAddr != "" {
+		pollInterval, _ = strconv.Atoi(envRunAddr)
+	} else {
+		flag.IntVar(&pollInterval, "p", 2, "poll interval in seconds")
+	}
+	flag.Parse()
 }
 
 func getMetrics() {

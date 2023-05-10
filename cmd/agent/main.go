@@ -1,16 +1,17 @@
 package main
 
 import (
-	"bytes"
 	"flag"
 	"fmt"
+	"log"
 	"math/rand"
-	"net/http"
 	"os"
 	"reflect"
 	"runtime"
 	"strconv"
 	"time"
+
+	"github.com/levigross/grequests"
 )
 
 var pollInterval int
@@ -55,18 +56,20 @@ var pollCount uint64
 func main() {
 	getParameters()
 
-	go getMetrics()
-
-	time.Sleep(time.Duration(reportInterval) * time.Second)
+	pollTicker := time.NewTicker(time.Duration(pollInterval) * time.Second)
+	defer pollTicker.Stop()
+	reportTicker := time.NewTicker(time.Duration(reportInterval) * time.Second)
+	defer reportTicker.Stop()
 
 	for {
-		for k, v := range valuesGauge {
-			post("gauge", k, strconv.FormatFloat(v, 'f', -1, 64))
+		select {
+		case <-pollTicker.C:
+			fmt.Println("get metrics ", pollCount)
+			getMetrics()
+		case <-reportTicker.C:
+			fmt.Println("send post")
+			postQueries()
 		}
-		post("counter", "PollCount", strconv.FormatUint(pollCount, 10))
-		post("gauge", "RandomValue", strconv.FormatFloat(rand.Float64(), 'f', -1, 64))
-		pollCount = 0
-		time.Sleep(time.Duration(reportInterval) * time.Second)
 	}
 }
 
@@ -94,32 +97,39 @@ func getParameters() {
 func getMetrics() {
 	var rtm runtime.MemStats
 
-	for {
-		pollCount += 1
-		runtime.ReadMemStats(&rtm)
-		numfield := reflect.ValueOf(&rtm).Elem().NumField()
-		for x := 0; x < numfield; x++ {
-			metricsName := reflect.TypeOf(&rtm).Elem().Field(x).Name
-			if metrics[metricsName] {
-				metricsValue := reflect.ValueOf(&rtm).Elem().Field(x)
-				var metricsFloat float64
-				if metricsValue.CanFloat() {
-					metricsFloat = float64(metricsValue.Float())
-				} else if metricsValue.CanUint() {
-					metricsFloat = float64(metricsValue.Uint())
-				}
-				valuesGauge[metricsName] = metricsFloat
+	pollCount += 1
+	runtime.ReadMemStats(&rtm)
+	numfield := reflect.ValueOf(&rtm).Elem().NumField()
+	for x := 0; x < numfield; x++ {
+		metricsName := reflect.TypeOf(&rtm).Elem().Field(x).Name
+		if metrics[metricsName] {
+			metricsValue := reflect.ValueOf(&rtm).Elem().Field(x)
+			var metricsFloat float64
+			if metricsValue.CanFloat() {
+				metricsFloat = float64(metricsValue.Float())
+			} else if metricsValue.CanUint() {
+				metricsFloat = float64(metricsValue.Uint())
 			}
+			valuesGauge[metricsName] = metricsFloat
 		}
-		time.Sleep(time.Duration(pollInterval) * time.Second)
 	}
 }
 
-func post(t string, mn string, sValue string) {
-	r := bytes.NewReader([]byte{})
-	resp, err := http.Post(fmt.Sprintf("http://%s/update/%s/%s/%s", addressServer, t, mn, sValue), "text/plain", r)
-	if err != nil {
-		panic(err)
+func postQueries() {
+	for k, v := range valuesGauge {
+		post("gauge", k, strconv.FormatFloat(v, 'f', -1, 64))
 	}
-	defer resp.Body.Close()
+	post("counter", "PollCount", strconv.FormatUint(pollCount, 10))
+	post("gauge", "RandomValue", strconv.FormatFloat(rand.Float64(), 'f', -1, 64))
+	pollCount = 0
+}
+
+func post(t string, mn string, sValue string) {
+	_, err := grequests.Post(fmt.Sprintf("http://%s/update/%s/%s/%s", addressServer, t, mn, sValue),
+		&grequests.RequestOptions{
+			Headers: map[string]string{"content-type": "text/plain"},
+		})
+	if err != nil {
+		log.Fatal(err)
+	}
 }

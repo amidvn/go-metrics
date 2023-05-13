@@ -15,19 +15,20 @@ func PostWebhook(s *storage.MemStorage) echo.HandlerFunc {
 		metricsName := ctx.Param("nameM")
 		metricsValue := ctx.Param("valueM")
 
-		if metricsType == "counter" {
-			if value, err := strconv.ParseInt(metricsValue, 10, 64); err == nil {
-				s.UpdateCounter(metricsName, value)
-			} else {
+		switch metricsType {
+		case "counter":
+			value, err := strconv.ParseInt(metricsValue, 10, 64)
+			if err != nil {
 				return ctx.String(http.StatusBadRequest, fmt.Sprintf("%s cannot be converted to an integer", metricsValue))
 			}
-		} else if metricsType == "gauge" {
-			if value, err := strconv.ParseFloat(metricsValue, 64); err == nil {
-				s.UpdateGauge(metricsName, value)
-			} else {
+			s.UpdateCounter(metricsName, value)
+		case "gauge":
+			value, err := strconv.ParseFloat(metricsValue, 64)
+			if err != nil {
 				return ctx.String(http.StatusBadRequest, fmt.Sprintf("%s cannot be converted to a float", metricsValue))
 			}
-		} else {
+			s.UpdateGauge(metricsName, value)
+		default:
 			return ctx.String(http.StatusBadRequest, "Invalid metric type. Can only be 'gauge' or 'counter'")
 		}
 

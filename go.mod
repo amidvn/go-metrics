@@ -3,6 +3,7 @@ module github.com/amidvn/go-metrics
 go 1.20
 
 require (
+	github.com/caarlos0/env/v6 v6.10.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/labstack/echo/v4 v4.10.2 // indirect

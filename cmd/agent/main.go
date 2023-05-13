@@ -5,93 +5,57 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
-	"os"
-	"reflect"
 	"runtime"
 	"strconv"
 	"time"
 
+	"github.com/caarlos0/env/v6"
 	"github.com/levigross/grequests"
 )
 
-var pollInterval int
-var reportInterval int
-var addressServer string
-
-var metrics = map[string]bool{
-	"Alloc":         true,
-	"BuckHashSys":   true,
-	"Frees":         true,
-	"GCCPUFraction": true,
-	"GCSys":         true,
-	"HeapAlloc":     true,
-	"HeapIdle":      true,
-	"HeapInuse":     true,
-	"HeapObjects":   true,
-	"HeapReleased":  true,
-	"HeapSys":       true,
-	"LastGC":        true,
-	"Lookups":       true,
-	"MCacheInuse":   true,
-	"MCacheSys":     true,
-	"MSpanInuse":    true,
-	"MSpanSys":      true,
-	"Mallocs":       true,
-	"NextGC":        true,
-	"NumForcedGC":   true,
-	"NumGC":         true,
-	"OtherSys":      true,
-	"PauseTotalNs":  true,
-	"StackInuse":    true,
-	"StackSys":      true,
-	"Sys":           true,
-	"TotalAlloc":    true,
-	"PollCount":     true,
-	"RandomValue":   true,
+type Config struct {
+	pollInterval   int    `env:"POLL_INTERVAL"`
+	reportInterval int    `env:"REPORT_INTERVAL"`
+	addressServer  string `env:"ADDRESS"`
 }
+
+var cfg Config
 
 var valuesGauge = map[string]float64{}
 var pollCount uint64
 
 func main() {
-	getParameters()
+	err := getParameters()
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	pollTicker := time.NewTicker(time.Duration(pollInterval) * time.Second)
+	pollTicker := time.NewTicker(time.Duration(cfg.pollInterval) * time.Second)
 	defer pollTicker.Stop()
-	reportTicker := time.NewTicker(time.Duration(reportInterval) * time.Second)
+	reportTicker := time.NewTicker(time.Duration(cfg.reportInterval) * time.Second)
 	defer reportTicker.Stop()
 
 	for {
 		select {
 		case <-pollTicker.C:
-			fmt.Println("get metrics ", pollCount)
 			getMetrics()
 		case <-reportTicker.C:
-			fmt.Println("send post")
 			postQueries()
 		}
 	}
 }
 
-func getParameters() {
-	if envRunAddr := os.Getenv("ADDRESS"); envRunAddr != "" {
-		addressServer = envRunAddr
-	} else {
-		flag.StringVar(&addressServer, "a", "localhost:8080", "address and port to run server")
-	}
-
-	if envRunAddr := os.Getenv("REPORT_INTERVAL"); envRunAddr != "" {
-		reportInterval, _ = strconv.Atoi(envRunAddr)
-	} else {
-		flag.IntVar(&reportInterval, "r", 10, "report interval in seconds")
-	}
-
-	if envRunAddr := os.Getenv("POLL_INTERVAL"); envRunAddr != "" {
-		pollInterval, _ = strconv.Atoi(envRunAddr)
-	} else {
-		flag.IntVar(&pollInterval, "p", 2, "poll interval in seconds")
-	}
+func getParameters() error {
+	flag.StringVar(&cfg.addressServer, "a", "localhost:8080", "address and port to run server")
+	flag.IntVar(&cfg.reportInterval, "r", 10, "report interval in seconds")
+	flag.IntVar(&cfg.pollInterval, "p", 2, "poll interval in seconds")
 	flag.Parse()
+
+	err := env.Parse(&cfg)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func getMetrics() {
@@ -99,20 +63,33 @@ func getMetrics() {
 
 	pollCount += 1
 	runtime.ReadMemStats(&rtm)
-	numfield := reflect.ValueOf(&rtm).Elem().NumField()
-	for x := 0; x < numfield; x++ {
-		metricsName := reflect.TypeOf(&rtm).Elem().Field(x).Name
-		if metrics[metricsName] {
-			metricsValue := reflect.ValueOf(&rtm).Elem().Field(x)
-			var metricsFloat float64
-			if metricsValue.CanFloat() {
-				metricsFloat = float64(metricsValue.Float())
-			} else if metricsValue.CanUint() {
-				metricsFloat = float64(metricsValue.Uint())
-			}
-			valuesGauge[metricsName] = metricsFloat
-		}
-	}
+
+	valuesGauge["Alloc"] = float64(rtm.Alloc)
+	valuesGauge["BuckHashSys"] = float64(rtm.BuckHashSys)
+	valuesGauge["Frees"] = float64(rtm.Frees)
+	valuesGauge["GCCPUFraction"] = float64(rtm.GCCPUFraction)
+	valuesGauge["HeapAlloc"] = float64(rtm.HeapAlloc)
+	valuesGauge["HeapIdle"] = float64(rtm.HeapIdle)
+	valuesGauge["HeapInuse"] = float64(rtm.HeapInuse)
+	valuesGauge["HeapObjects"] = float64(rtm.HeapObjects)
+	valuesGauge["HeapReleased"] = float64(rtm.HeapReleased)
+	valuesGauge["HeapSys"] = float64(rtm.HeapSys)
+	valuesGauge["LastGC"] = float64(rtm.LastGC)
+	valuesGauge["Lookups"] = float64(rtm.Lookups)
+	valuesGauge["MCacheInuse"] = float64(rtm.MCacheInuse)
+	valuesGauge["MCacheSys"] = float64(rtm.MCacheSys)
+	valuesGauge["MSpanInuse"] = float64(rtm.MSpanInuse)
+	valuesGauge["MSpanSys"] = float64(rtm.MSpanSys)
+	valuesGauge["Mallocs"] = float64(rtm.Mallocs)
+	valuesGauge["NextGC"] = float64(rtm.NextGC)
+	valuesGauge["NumForcedGC"] = float64(rtm.NumForcedGC)
+	valuesGauge["NumGC"] = float64(rtm.NumGC)
+	valuesGauge["OtherSys"] = float64(rtm.OtherSys)
+	valuesGauge["PauseTotalNs"] = float64(rtm.PauseTotalNs)
+	valuesGauge["StackInuse"] = float64(rtm.StackInuse)
+	valuesGauge["StackSys"] = float64(rtm.StackSys)
+	valuesGauge["Sys"] = float64(rtm.Sys)
+	valuesGauge["TotalAlloc"] = float64(rtm.TotalAlloc)
 }
 
 func postQueries() {
@@ -125,11 +102,8 @@ func postQueries() {
 }
 
 func post(t string, mn string, sValue string) {
-	_, err := grequests.Post(fmt.Sprintf("http://%s/update/%s/%s/%s", addressServer, t, mn, sValue),
+	grequests.Post(fmt.Sprintf("http://%s/update/%s/%s/%s", cfg.addressServer, t, mn, sValue),
 		&grequests.RequestOptions{
 			Headers: map[string]string{"content-type": "text/plain"},
 		})
-	if err != nil {
-		log.Fatal(err)
-	}
 }

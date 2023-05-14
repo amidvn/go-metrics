@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"os"
 	"runtime"
 	"strconv"
 	"time"
 
-	"github.com/caarlos0/env/v6"
 	"github.com/levigross/grequests"
 )
 
@@ -51,9 +51,14 @@ func getParameters() error {
 	flag.IntVar(&cfg.pollInterval, "p", 2, "poll interval in seconds")
 	flag.Parse()
 
-	err := env.Parse(&cfg)
-	if err != nil {
-		return err
+	if envRunAddr := os.Getenv("ADDRESS"); envRunAddr != "" {
+		cfg.addressServer = envRunAddr
+	}
+	if envRunAddr := os.Getenv("REPORT_INTERVAL"); envRunAddr != "" {
+		cfg.reportInterval, _ = strconv.Atoi(envRunAddr)
+	}
+	if envRunAddr := os.Getenv("POLL_INTERVAL"); envRunAddr != "" {
+		cfg.pollInterval, _ = strconv.Atoi(envRunAddr)
 	}
 	return nil
 }
@@ -102,8 +107,11 @@ func postQueries() {
 }
 
 func post(t string, mn string, sValue string) {
-	grequests.Post(fmt.Sprintf("http://%s/update/%s/%s/%s", cfg.addressServer, t, mn, sValue),
+	_, err := grequests.Post(fmt.Sprintf("http://%s/update/%s/%s/%s", cfg.addressServer, t, mn, sValue),
 		&grequests.RequestOptions{
 			Headers: map[string]string{"content-type": "text/plain"},
 		})
+	if err != nil {
+		fmt.Println(err)
+	}
 }

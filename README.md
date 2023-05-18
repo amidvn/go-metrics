@@ -10,9 +10,9 @@
 * склонировать проект на свой компьютер <code>git clone https://github.com/amidvn/go-metrics.git</code>
 * перейти в каталог проекта <code>cd go-metrics</code>
 
-Запуск сервера: <code>go run .\cmd\server\main.go</code>
+Запуск сервера: <code>go run .\cmd\server</code>
 
-Запуск клиента: <code>go run .\cmd\client\main.go</code>
+Запуск клиента: <code>go run .\cmd\client</code>
 
 ## Примеры
 

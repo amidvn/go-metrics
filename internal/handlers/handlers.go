@@ -62,7 +62,7 @@ func UpdateJSON(s *storage.MemStorage) echo.HandlerFunc {
 		case "gauge":
 			s.UpdateGauge(metric.ID, *metric.Value)
 		default:
-			return ctx.String(http.StatusBadRequest, "Invalid metric type. Can only be 'gauge' or 'counter'")
+			return ctx.String(http.StatusNotFound, "Invalid metric type. Can only be 'gauge' or 'counter'")
 		}
 
 		ctx.Response().Header().Set("Content-Type", "application/json")
@@ -99,7 +99,7 @@ func GetValueJSON(s *storage.MemStorage) echo.HandlerFunc {
 		case "gauge":
 			*metric.Value = s.GetGaugeValue(metric.ID)
 		default:
-			return ctx.String(http.StatusBadRequest, "Invalid metric type. Can only be 'gauge' or 'counter'")
+			return ctx.String(http.StatusNotFound, "Invalid metric type. Can only be 'gauge' or 'counter'")
 		}
 
 		ctx.Response().Header().Set("Content-Type", "application/json")

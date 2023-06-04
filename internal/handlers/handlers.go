@@ -95,9 +95,11 @@ func GetValueJSON(s *storage.MemStorage) echo.HandlerFunc {
 
 		switch metric.MType {
 		case "counter":
-			*metric.Delta = s.GetCounterValue(metric.ID)
+			value := s.GetCounterValue(metric.ID)
+			metric.Delta = &value
 		case "gauge":
-			*metric.Value = s.GetGaugeValue(metric.ID)
+			value := s.GetGaugeValue(metric.ID)
+			metric.Value = &value
 		default:
 			return ctx.String(http.StatusNotFound, "Invalid metric type. Can only be 'gauge' or 'counter'")
 		}

@@ -41,6 +41,14 @@ func (s *MemStorage) GetValue(t string, n string) (string, int) {
 	return v, statusCode
 }
 
+func (s *MemStorage) GetCounterValue(id string) int64 {
+	return int64(s.counterData[id])
+}
+
+func (s *MemStorage) GetGaugeValue(id string) float64 {
+	return float64(s.gaugeData[id])
+}
+
 func (s *MemStorage) AllMetrics() string {
 	var result string
 	result += "Gauge metrics:\n"

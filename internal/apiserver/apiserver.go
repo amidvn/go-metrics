@@ -44,7 +44,7 @@ func New() *APIServer {
 	a.echo.Use(handlers.WithLogging(a.sugar))
 
 	a.echo.GET("/", handlers.AllMetrics(a.storage))
-	a.echo.GET("/value/", handlers.GetValueJSON(a.storage))
+	a.echo.POST("/value/", handlers.GetValueJSON(a.storage))
 	a.echo.GET("/value/:typeM/:nameM", handlers.MetricsValue(a.storage))
 	a.echo.POST("/update/", handlers.UpdateJSON(a.storage))
 	a.echo.POST("/update/:typeM/:nameM/:valueM", handlers.PostWebhook(a.storage))

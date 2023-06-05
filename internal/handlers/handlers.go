@@ -144,7 +144,14 @@ func GzipUnpacking() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(ctx echo.Context) (err error) {
 			req := ctx.Request()
+			rw := ctx.Response().Writer
 			header := req.Header
+			if strings.Contains(header.Get("Accept-Encoding"), "gzip") {
+				cw := newCompressWriter(rw)
+				ctx.Response().Writer = cw
+				defer cw.Close()
+			}
+
 			if strings.Contains(header.Get("Content-Encoding"), "gzip") {
 				cr, err := newCompressReader(req.Body)
 				if err != nil {

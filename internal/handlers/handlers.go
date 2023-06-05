@@ -26,13 +26,6 @@ func PostWebhook(s *storage.MemStorage) echo.HandlerFunc {
 		metricsName := ctx.Param("nameM")
 		metricsValue := ctx.Param("valueM")
 
-		metric := Metrics{
-			ID:    metricsName,
-			MType: metricsType,
-			Delta: nil,
-			Value: nil,
-		}
-
 		switch metricsType {
 		case "counter":
 			value, err := strconv.ParseInt(metricsValue, 10, 64)
@@ -40,20 +33,18 @@ func PostWebhook(s *storage.MemStorage) echo.HandlerFunc {
 				return ctx.String(http.StatusBadRequest, fmt.Sprintf("%s cannot be converted to an integer", metricsValue))
 			}
 			s.UpdateCounter(metricsName, value)
-			metric.Delta = &value
 		case "gauge":
 			value, err := strconv.ParseFloat(metricsValue, 64)
 			if err != nil {
 				return ctx.String(http.StatusBadRequest, fmt.Sprintf("%s cannot be converted to a float", metricsValue))
 			}
 			s.UpdateGauge(metricsName, value)
-			metric.Value = &value
 		default:
 			return ctx.String(http.StatusBadRequest, "Invalid metric type. Can only be 'gauge' or 'counter'")
 		}
 
-		ctx.Response().Header().Set("Content-Type", "application/json")
-		return ctx.JSON(http.StatusOK, metric)
+		ctx.Response().Header().Set("Content-Type", "text/plain; charset=utf-8")
+		return ctx.String(http.StatusOK, "")
 	}
 }
 
@@ -84,26 +75,13 @@ func MetricsValue(s *storage.MemStorage) echo.HandlerFunc {
 		typeM := ctx.Param("typeM")
 		nameM := ctx.Param("nameM")
 
-		metric := Metrics{
-			ID:    nameM,
-			MType: typeM,
-			Delta: nil,
-			Value: nil,
+		val, status := s.GetValue(typeM, nameM)
+		err := ctx.String(status, val)
+		if err != nil {
+			return err
 		}
 
-		switch typeM {
-		case "counter":
-			value := s.GetCounterValue(metric.ID)
-			metric.Delta = &value
-		case "gauge":
-			value := s.GetGaugeValue(metric.ID)
-			metric.Value = &value
-		default:
-			return ctx.String(http.StatusNotFound, "Invalid metric type. Can only be 'gauge' or 'counter'")
-		}
-
-		ctx.Response().Header().Set("Content-Type", "application/json")
-		return ctx.JSON(http.StatusOK, metric)
+		return nil
 	}
 }
 

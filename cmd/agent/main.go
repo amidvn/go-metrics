@@ -121,7 +121,7 @@ func postQueries() {
 }
 
 func postJSON(s *grequests.Session, url string, m models.Metrics) {
-	js, err := json.Marshal(&m)
+	js, err := json.Marshal(m)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -131,11 +131,7 @@ func postJSON(s *grequests.Session, url string, m models.Metrics) {
 		fmt.Println(err)
 	}
 
-	resp, err := s.Post(url, &grequests.RequestOptions{JSON: gz})
-	if err != nil {
-		fmt.Println(err)
-	}
-	fmt.Println(resp.StatusCode)
+	s.Post(url, &grequests.RequestOptions{JSON: gz})
 }
 
 func compress(b []byte) ([]byte, error) {

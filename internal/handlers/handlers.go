@@ -144,18 +144,17 @@ func GzipUnpacking() echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(ctx echo.Context) (err error) {
 			req := ctx.Request()
-			// res := ctx.Response()
-			if err = next(ctx); err != nil {
-				ctx.Error(err)
-			}
 			header := req.Header
 			if strings.Contains(header.Get("Content-Encoding"), "gzip") {
-				cr, err := newCompressReader(ctx.Request().Body)
+				cr, err := newCompressReader(req.Body)
 				if err != nil {
 					return ctx.String(http.StatusInternalServerError, "")
 				}
 				ctx.Request().Body = cr
 				defer cr.Close()
+			}
+			if err = next(ctx); err != nil {
+				ctx.Error(err)
 			}
 
 			return err

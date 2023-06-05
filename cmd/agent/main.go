@@ -1,6 +1,9 @@
 package main
 
 import (
+	"bytes"
+	"compress/gzip"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -10,6 +13,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/amidvn/go-metrics/internal/models"
 	"github.com/levigross/grequests"
 )
 
@@ -98,20 +102,52 @@ func getMetrics() {
 }
 
 func postQueries() {
-	for k, v := range valuesGauge {
-		post("gauge", k, strconv.FormatFloat(v, 'f', -1, 64))
+	url := fmt.Sprintf("http://%s/update/", cfg.addressServer)
+	ro := grequests.RequestOptions{
+		Headers: map[string]string{
+			"content-type":     "application/json",
+			"content-encoding": "gzip",
+		},
 	}
-	post("counter", "PollCount", strconv.FormatUint(pollCount, 10))
-	post("gauge", "RandomValue", strconv.FormatFloat(rand.Float64(), 'f', -1, 64))
+	session := grequests.NewSession(&ro)
+	for k, v := range valuesGauge {
+		postJSON(session, url, models.Metrics{ID: k, MType: "gauge", Value: &v})
+	}
+	pc := int64(pollCount)
+	postJSON(session, url, models.Metrics{ID: "PollCount", MType: "counter", Delta: &pc})
+	r := rand.Float64()
+	postJSON(session, url, models.Metrics{ID: "RandomValue", MType: "gauge", Value: &r})
 	pollCount = 0
 }
 
-func post(t string, mn string, sValue string) {
-	_, err := grequests.Post(fmt.Sprintf("http://%s/update/%s/%s/%s", cfg.addressServer, t, mn, sValue),
-		&grequests.RequestOptions{
-			Headers: map[string]string{"content-type": "text/plain"},
-		})
+func postJSON(s *grequests.Session, url string, m models.Metrics) {
+	js, err := json.Marshal(&m)
 	if err != nil {
 		fmt.Println(err)
 	}
+
+	gz, err := compress(js)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	resp, err := s.Post(url, &grequests.RequestOptions{JSON: gz})
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(resp.StatusCode)
+}
+
+func compress(b []byte) ([]byte, error) {
+	var bf bytes.Buffer
+	gz, err := gzip.NewWriterLevel(&bf, gzip.BestSpeed)
+	if err != nil {
+		return nil, err
+	}
+	_, err = gz.Write(b)
+	if err != nil {
+		return nil, err
+	}
+	gz.Close()
+	return bf.Bytes(), nil
 }

@@ -5,20 +5,15 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
+	"github.com/amidvn/go-metrics/internal/models"
 	"github.com/amidvn/go-metrics/internal/storage"
 	"github.com/labstack/echo/v4"
 
 	"go.uber.org/zap"
 )
-
-type Metrics struct {
-	ID    string   `json:"id"`              // имя метрики
-	MType string   `json:"type"`            // параметр, принимающий значение gauge или counter
-	Delta *int64   `json:"delta,omitempty"` // значение метрики в случае передачи counter
-	Value *float64 `json:"value,omitempty"` // значение метрики в случае передачи gauge
-}
 
 func PostWebhook(s *storage.MemStorage) echo.HandlerFunc {
 	return func(ctx echo.Context) error {
@@ -50,7 +45,7 @@ func PostWebhook(s *storage.MemStorage) echo.HandlerFunc {
 
 func UpdateJSON(s *storage.MemStorage) echo.HandlerFunc {
 	return func(ctx echo.Context) error {
-		var metric Metrics
+		var metric models.Metrics
 		err := json.NewDecoder(ctx.Request().Body).Decode(&metric)
 		if err != nil {
 			return ctx.String(http.StatusBadRequest, fmt.Sprintf("Error in JSON decode: %s", err))
@@ -87,7 +82,7 @@ func MetricsValue(s *storage.MemStorage) echo.HandlerFunc {
 
 func GetValueJSON(s *storage.MemStorage) echo.HandlerFunc {
 	return func(ctx echo.Context) error {
-		var metric Metrics
+		var metric models.Metrics
 		err := json.NewDecoder(ctx.Request().Body).Decode(&metric)
 		if err != nil {
 			return ctx.String(http.StatusBadRequest, fmt.Sprintf("Error in JSON decode: %s", err))
@@ -142,5 +137,20 @@ func WithLogging(sugar zap.SugaredLogger) echo.MiddlewareFunc {
 
 			return err
 		}
+	}
+}
+
+func GzipUnpacking(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(ctx echo.Context) error {
+		header := ctx.Request().Header
+		if strings.Contains(header.Get("Content-Encoding"), "gzip") {
+			cr, err := newCompressReader(ctx.Request().Body)
+			if err != nil {
+				return ctx.String(http.StatusInternalServerError, "")
+			}
+			ctx.Request().Body = cr
+			defer cr.Close()
+		}
+		return nil
 	}
 }

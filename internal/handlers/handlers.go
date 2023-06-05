@@ -106,6 +106,7 @@ func GetValueJSON(s *storage.MemStorage) echo.HandlerFunc {
 
 func AllMetrics(s *storage.MemStorage) echo.HandlerFunc {
 	return func(ctx echo.Context) error {
+		ctx.Response().Header().Set("Content-Type", "text/html")
 		err := ctx.String(http.StatusOK, s.AllMetrics())
 		if err != nil {
 			return err

@@ -42,7 +42,7 @@ func New() *APIServer {
 	a.address = address
 
 	a.echo.Use(handlers.WithLogging(a.sugar))
-	a.echo.Use(handlers.GzipUnpacking)
+	a.echo.Use(handlers.GzipUnpacking())
 
 	a.echo.GET("/", handlers.AllMetrics(a.storage))
 	a.echo.POST("/value/", handlers.GetValueJSON(a.storage))

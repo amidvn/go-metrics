@@ -140,17 +140,25 @@ func WithLogging(sugar zap.SugaredLogger) echo.MiddlewareFunc {
 	}
 }
 
-func GzipUnpacking(next echo.HandlerFunc) echo.HandlerFunc {
-	return func(ctx echo.Context) error {
-		header := ctx.Request().Header
-		if strings.Contains(header.Get("Content-Encoding"), "gzip") {
-			cr, err := newCompressReader(ctx.Request().Body)
-			if err != nil {
-				return ctx.String(http.StatusInternalServerError, "")
+func GzipUnpacking() echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(ctx echo.Context) (err error) {
+			req := ctx.Request()
+			// res := ctx.Response()
+			if err = next(ctx); err != nil {
+				ctx.Error(err)
 			}
-			ctx.Request().Body = cr
-			defer cr.Close()
+			header := req.Header
+			if strings.Contains(header.Get("Content-Encoding"), "gzip") {
+				cr, err := newCompressReader(ctx.Request().Body)
+				if err != nil {
+					return ctx.String(http.StatusInternalServerError, "")
+				}
+				ctx.Request().Body = cr
+				defer cr.Close()
+			}
+
+			return err
 		}
-		return nil
 	}
 }

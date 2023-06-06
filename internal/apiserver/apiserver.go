@@ -2,8 +2,10 @@ package apiserver
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"os"
+	"strconv"
 
 	"github.com/amidvn/go-metrics/internal/handlers"
 	"github.com/amidvn/go-metrics/internal/storage"
@@ -12,16 +14,54 @@ import (
 	"go.uber.org/zap"
 )
 
+type Conf struct {
+	address       string
+	storeInterval int
+	filePath      string
+	restore       bool
+}
+
 type APIServer struct {
 	storage *storage.MemStorage
 	echo    *echo.Echo
 	address string
 	sugar   zap.SugaredLogger
+	config  *Conf
 }
 
 func New() *APIServer {
 	a := &APIServer{}
-	a.storage = storage.New()
+
+	var conf Conf
+	flag.StringVar(&conf.address, "a", "localhost:8080", "address and port to run server")
+	flag.IntVar(&conf.storeInterval, "i", 300, "interval for saving metrics on the server")
+	flag.StringVar(&conf.filePath, "f", "/tmp/metrics-db.json", "file storage path for saving data")
+	flag.BoolVar(&conf.restore, "r", true, "need to load data at startup")
+	flag.Parse()
+	if envValue := os.Getenv("ADDRESS"); envValue != "" {
+		conf.address = envValue
+	}
+	if envValue := os.Getenv("STORE_INTERVAL"); envValue != "" {
+		value, err := strconv.Atoi(envValue)
+		if err != nil {
+			fmt.Println(err)
+		}
+		conf.storeInterval = value
+	}
+	if envValue := os.Getenv("FILE_STORAGE_PATH"); envValue != "" {
+		conf.filePath = envValue
+	}
+	if envValue := os.Getenv("RESTORE"); envValue != "" {
+		value, err := strconv.ParseBool(envValue)
+		if err != nil {
+			fmt.Println(err)
+		}
+		conf.restore = value
+	}
+	a.address = conf.address
+	a.config = &conf
+
+	a.storage = storage.New(conf.storeInterval, conf.filePath, conf.restore)
 	a.echo = echo.New()
 
 	logger, err := zap.NewDevelopment()
@@ -31,15 +71,6 @@ func New() *APIServer {
 	defer logger.Sync()
 
 	a.sugar = *logger.Sugar()
-
-	var address string
-	if envRunAddr := os.Getenv("ADDRESS"); envRunAddr != "" {
-		address = envRunAddr
-	} else {
-		flag.StringVar(&address, "a", "localhost:8080", "address and port to run server")
-		flag.Parse()
-	}
-	a.address = address
 
 	a.echo.Use(handlers.WithLogging(a.sugar))
 	a.echo.Use(handlers.GzipUnpacking())

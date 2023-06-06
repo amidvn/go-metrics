@@ -55,14 +55,14 @@ func getParameters() error {
 	flag.IntVar(&cfg.pollInterval, "p", 2, "poll interval in seconds")
 	flag.Parse()
 
-	if envRunAddr := os.Getenv("ADDRESS"); envRunAddr != "" {
-		cfg.addressServer = envRunAddr
+	if envValue := os.Getenv("ADDRESS"); envValue != "" {
+		cfg.addressServer = envValue
 	}
-	if envRunAddr := os.Getenv("REPORT_INTERVAL"); envRunAddr != "" {
-		cfg.reportInterval, _ = strconv.Atoi(envRunAddr)
+	if envValue := os.Getenv("REPORT_INTERVAL"); envValue != "" {
+		cfg.reportInterval, _ = strconv.Atoi(envValue)
 	}
-	if envRunAddr := os.Getenv("POLL_INTERVAL"); envRunAddr != "" {
-		cfg.pollInterval, _ = strconv.Atoi(envRunAddr)
+	if envValue := os.Getenv("POLL_INTERVAL"); envValue != "" {
+		cfg.pollInterval, _ = strconv.Atoi(envValue)
 	}
 	return nil
 }

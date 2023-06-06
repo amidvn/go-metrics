@@ -135,6 +135,7 @@ func (c *Consumer) readMetrics(s *MemStorage) {
 	err := c.decoder.Decode(&data)
 	if err != nil {
 		fmt.Println(err)
+		return
 	}
 	s.counterData = data.Counter
 	s.gaugeData = data.Gauge

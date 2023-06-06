@@ -37,7 +37,7 @@ func New(storeInterval int, filePath string, restore bool) *MemStorage {
 			storage.loadFromFile(filePath)
 		}
 		if storeInterval != 0 {
-			storage.storing()
+			go storage.storing()
 		}
 	}
 
@@ -151,21 +151,27 @@ func (s *MemStorage) loadFromFile(filePath string) {
 	Consumer.readMetrics(s)
 }
 
-func (s *MemStorage) storing() error {
+func (s *MemStorage) storing() {
 	dir, _ := path.Split(s.filePath)
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
 		err := os.MkdirAll(dir, 0666)
 		if err != nil {
-			return err
+			fmt.Println(err)
 		}
 	}
-	for {
-		time.Sleep(time.Duration(s.storeInterval) * time.Second)
-		if err := s.saveToFile(); err != nil {
-			fmt.Printf("Error in storing to file: %v", err)
-			return err
-		}
+	pollTicker := time.NewTicker(time.Duration(s.storeInterval) * time.Second)
+	defer pollTicker.Stop()
+	for range pollTicker.C {
+		s.saveMetrics()
 	}
+}
+
+func (s *MemStorage) saveMetrics() error {
+	if err := s.saveToFile(); err != nil {
+		fmt.Printf("Error in storing to file: %v", err)
+		return err
+	}
+	return nil
 }
 
 func (s *MemStorage) saveToFile() error {

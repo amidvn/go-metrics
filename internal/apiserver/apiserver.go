@@ -15,10 +15,10 @@ import (
 )
 
 type Conf struct {
-	address       string
-	storeInterval int
-	filePath      string
-	restore       bool
+	Address       string
+	StoreInterval int
+	FilePath      string
+	Restore       bool
 }
 
 type APIServer struct {
@@ -33,10 +33,10 @@ func New() *APIServer {
 	a := &APIServer{}
 
 	var conf Conf
-	flag.StringVar(&conf.address, "a", "localhost:8080", "address and port to run server")
-	flag.IntVar(&conf.storeInterval, "i", 300, "interval for saving metrics on the server")
-	flag.StringVar(&conf.filePath, "f", "/tmp/metrics-db.json", "file storage path for saving data")
-	flag.BoolVar(&conf.restore, "r", true, "need to load data at startup")
+	flag.StringVar(&conf.Address, "a", "localhost:8080", "address and port to run server")
+	flag.IntVar(&conf.StoreInterval, "i", 300, "interval for saving metrics on the server")
+	flag.StringVar(&conf.FilePath, "f", "/tmp/metrics-db.json", "file storage path for saving data")
+	flag.BoolVar(&conf.Restore, "r", true, "need to load data at startup")
 	flag.Parse()
 
 	err := env.Parse(&conf)
@@ -44,10 +44,10 @@ func New() *APIServer {
 		fmt.Println(err)
 	}
 
-	a.address = conf.address
+	a.address = conf.Address
 	a.config = &conf
 
-	a.storage = storage.New(conf.storeInterval, conf.filePath, conf.restore)
+	a.storage = storage.New(conf.StoreInterval, conf.FilePath, conf.Restore)
 	a.echo = echo.New()
 
 	logger, err := zap.NewDevelopment()
@@ -58,12 +58,12 @@ func New() *APIServer {
 
 	a.logger = *logger.Sugar()
 
-	if conf.filePath != "" {
-		if conf.restore {
-			loadStorageFromFile(a.storage, conf.filePath)
+	if conf.FilePath != "" {
+		if conf.Restore {
+			loadStorageFromFile(a.storage, conf.FilePath)
 		}
-		if conf.storeInterval != 0 {
-			go storing(a.storage, conf.filePath, conf.storeInterval)
+		if conf.StoreInterval != 0 {
+			go storing(a.storage, conf.FilePath, conf.StoreInterval)
 		}
 	}
 

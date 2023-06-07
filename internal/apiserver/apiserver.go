@@ -4,11 +4,11 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"os"
-	"strconv"
 
 	"github.com/amidvn/go-metrics/internal/handlers"
+	"github.com/amidvn/go-metrics/internal/middlewares"
 	"github.com/amidvn/go-metrics/internal/storage"
+	"github.com/caarlos0/env/v6"
 	"github.com/labstack/echo/v4"
 
 	"go.uber.org/zap"
@@ -25,7 +25,7 @@ type APIServer struct {
 	storage *storage.MemStorage
 	echo    *echo.Echo
 	address string
-	sugar   zap.SugaredLogger
+	logger  zap.SugaredLogger
 	config  *Conf
 }
 
@@ -38,26 +38,12 @@ func New() *APIServer {
 	flag.StringVar(&conf.filePath, "f", "/tmp/metrics-db.json", "file storage path for saving data")
 	flag.BoolVar(&conf.restore, "r", true, "need to load data at startup")
 	flag.Parse()
-	if envValue := os.Getenv("ADDRESS"); envValue != "" {
-		conf.address = envValue
+
+	err := env.Parse(&conf)
+	if err != nil {
+		fmt.Println(err)
 	}
-	if envValue := os.Getenv("STORE_INTERVAL"); envValue != "" {
-		value, err := strconv.Atoi(envValue)
-		if err != nil {
-			fmt.Println(err)
-		}
-		conf.storeInterval = value
-	}
-	if envValue := os.Getenv("FILE_STORAGE_PATH"); envValue != "" {
-		conf.filePath = envValue
-	}
-	if envValue := os.Getenv("RESTORE"); envValue != "" {
-		value, err := strconv.ParseBool(envValue)
-		if err != nil {
-			fmt.Println(err)
-		}
-		conf.restore = value
-	}
+
 	a.address = conf.address
 	a.config = &conf
 
@@ -70,10 +56,19 @@ func New() *APIServer {
 	}
 	defer logger.Sync()
 
-	a.sugar = *logger.Sugar()
+	a.logger = *logger.Sugar()
 
-	a.echo.Use(handlers.WithLogging(a.sugar))
-	a.echo.Use(handlers.GzipUnpacking())
+	if conf.filePath != "" {
+		if conf.restore {
+			loadStorageFromFile(a.storage, conf.filePath)
+		}
+		if conf.storeInterval != 0 {
+			go storing(a.storage, conf.filePath, conf.storeInterval)
+		}
+	}
+
+	a.echo.Use(middlewares.WithLogging(a.logger))
+	a.echo.Use(middlewares.GzipUnpacking())
 
 	a.echo.GET("/", handlers.AllMetrics(a.storage))
 	a.echo.POST("/value/", handlers.GetValueJSON(a.storage))

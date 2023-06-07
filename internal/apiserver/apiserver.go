@@ -15,10 +15,10 @@ import (
 )
 
 type Conf struct {
-	Address       string
-	StoreInterval int
-	FilePath      string
-	Restore       bool
+	Address       string `env:"ADDRESS"`
+	StoreInterval int    `env:"STORE_INTERVAL"`
+	FilePath      string `env:"FILE_STORAGE_PATH"`
+	Restore       bool   `env:"RESTORE"`
 }
 
 type APIServer struct {

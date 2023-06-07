@@ -17,9 +17,9 @@ import (
 )
 
 type Config struct {
-	pollInterval   int    `env:"POLL_INTERVAL"`
-	reportInterval int    `env:"REPORT_INTERVAL"`
-	addressServer  string `env:"ADDRESS"`
+	PollInterval   int    `env:"POLL_INTERVAL"`
+	ReportInterval int    `env:"REPORT_INTERVAL"`
+	AddressServer  string `env:"ADDRESS"`
 }
 
 var cfg Config
@@ -33,9 +33,9 @@ func main() {
 		log.Fatal(err)
 	}
 
-	pollTicker := time.NewTicker(time.Duration(cfg.pollInterval) * time.Second)
+	pollTicker := time.NewTicker(time.Duration(cfg.PollInterval) * time.Second)
 	defer pollTicker.Stop()
-	reportTicker := time.NewTicker(time.Duration(cfg.reportInterval) * time.Second)
+	reportTicker := time.NewTicker(time.Duration(cfg.ReportInterval) * time.Second)
 	defer reportTicker.Stop()
 
 	for {
@@ -49,9 +49,9 @@ func main() {
 }
 
 func getParameters() error {
-	flag.StringVar(&cfg.addressServer, "a", "localhost:8080", "address and port to run server")
-	flag.IntVar(&cfg.reportInterval, "r", 10, "report interval in seconds")
-	flag.IntVar(&cfg.pollInterval, "p", 2, "poll interval in seconds")
+	flag.StringVar(&cfg.AddressServer, "a", "localhost:8080", "address and port to run server")
+	flag.IntVar(&cfg.ReportInterval, "r", 10, "report interval in seconds")
+	flag.IntVar(&cfg.PollInterval, "p", 2, "poll interval in seconds")
 	flag.Parse()
 
 	err := env.Parse(&cfg)
@@ -97,7 +97,7 @@ func getMetrics() {
 }
 
 func postQueries() {
-	url := fmt.Sprintf("http://%s/update/", cfg.addressServer)
+	url := fmt.Sprintf("http://%s/update/", cfg.AddressServer)
 
 	for k, v := range valuesGauge {
 		postJSON(url, models.Metrics{ID: k, MType: "gauge", Value: &v})

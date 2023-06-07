@@ -21,8 +21,12 @@ func loadStorageFromFile(s *storage.MemStorage, filePath string) {
 		fmt.Println(err)
 	}
 
-	s.UpdateCounterData(data.Counter)
-	s.UpdateGaugeData(data.Gauge)
+	if len(data.Counter) != 0 {
+		s.UpdateCounterData(data.Counter)
+	}
+	if len(data.Gauge) != 0 {
+		s.UpdateGaugeData(data.Gauge)
+	}
 }
 
 func storing(s *storage.MemStorage, filePath string, storeInterval int) {

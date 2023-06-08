@@ -1,22 +1,25 @@
 package main
 
 import (
+	"bytes"
+	"compress/gzip"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
 	"math/rand"
-	"os"
 	"runtime"
-	"strconv"
 	"time"
 
+	"github.com/amidvn/go-metrics/internal/models"
+	"github.com/caarlos0/env/v6"
 	"github.com/levigross/grequests"
 )
 
 type Config struct {
-	pollInterval   int    `env:"POLL_INTERVAL"`
-	reportInterval int    `env:"REPORT_INTERVAL"`
-	addressServer  string `env:"ADDRESS"`
+	PollInterval   int    `env:"POLL_INTERVAL"`
+	ReportInterval int    `env:"REPORT_INTERVAL"`
+	AddressServer  string `env:"ADDRESS"`
 }
 
 var cfg Config
@@ -30,9 +33,9 @@ func main() {
 		log.Fatal(err)
 	}
 
-	pollTicker := time.NewTicker(time.Duration(cfg.pollInterval) * time.Second)
+	pollTicker := time.NewTicker(time.Duration(cfg.PollInterval) * time.Second)
 	defer pollTicker.Stop()
-	reportTicker := time.NewTicker(time.Duration(cfg.reportInterval) * time.Second)
+	reportTicker := time.NewTicker(time.Duration(cfg.ReportInterval) * time.Second)
 	defer reportTicker.Stop()
 
 	for {
@@ -46,20 +49,16 @@ func main() {
 }
 
 func getParameters() error {
-	flag.StringVar(&cfg.addressServer, "a", "localhost:8080", "address and port to run server")
-	flag.IntVar(&cfg.reportInterval, "r", 10, "report interval in seconds")
-	flag.IntVar(&cfg.pollInterval, "p", 2, "poll interval in seconds")
+	flag.StringVar(&cfg.AddressServer, "a", "localhost:8080", "address and port to run server")
+	flag.IntVar(&cfg.ReportInterval, "r", 10, "report interval in seconds")
+	flag.IntVar(&cfg.PollInterval, "p", 2, "poll interval in seconds")
 	flag.Parse()
 
-	if envRunAddr := os.Getenv("ADDRESS"); envRunAddr != "" {
-		cfg.addressServer = envRunAddr
+	err := env.Parse(&cfg)
+	if err != nil {
+		fmt.Println(err)
 	}
-	if envRunAddr := os.Getenv("REPORT_INTERVAL"); envRunAddr != "" {
-		cfg.reportInterval, _ = strconv.Atoi(envRunAddr)
-	}
-	if envRunAddr := os.Getenv("POLL_INTERVAL"); envRunAddr != "" {
-		cfg.pollInterval, _ = strconv.Atoi(envRunAddr)
-	}
+
 	return nil
 }
 
@@ -98,20 +97,47 @@ func getMetrics() {
 }
 
 func postQueries() {
+	url := fmt.Sprintf("http://%s/update/", cfg.AddressServer)
+
 	for k, v := range valuesGauge {
-		post("gauge", k, strconv.FormatFloat(v, 'f', -1, 64))
+		postJSON(url, models.Metrics{ID: k, MType: "gauge", Value: &v})
 	}
-	post("counter", "PollCount", strconv.FormatUint(pollCount, 10))
-	post("gauge", "RandomValue", strconv.FormatFloat(rand.Float64(), 'f', -1, 64))
+	pc := int64(pollCount)
+	postJSON(url, models.Metrics{ID: "PollCount", MType: "counter", Delta: &pc})
+	r := rand.Float64()
+	postJSON(url, models.Metrics{ID: "RandomValue", MType: "gauge", Value: &r})
 	pollCount = 0
 }
 
-func post(t string, mn string, sValue string) {
-	_, err := grequests.Post(fmt.Sprintf("http://%s/update/%s/%s/%s", cfg.addressServer, t, mn, sValue),
-		&grequests.RequestOptions{
-			Headers: map[string]string{"content-type": "text/plain"},
-		})
+func postJSON(url string, m models.Metrics) {
+	js, err := json.Marshal(m)
 	if err != nil {
 		fmt.Println(err)
 	}
+
+	gz, err := compress(js)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	grequests.Post(url,
+		&grequests.RequestOptions{
+			Headers: map[string]string{
+				"content-type":     "application/json",
+				"content-encoding": "gzip",
+			}, JSON: gz})
+}
+
+func compress(b []byte) ([]byte, error) {
+	var bf bytes.Buffer
+	gz, err := gzip.NewWriterLevel(&bf, gzip.BestSpeed)
+	if err != nil {
+		return nil, err
+	}
+	_, err = gz.Write(b)
+	if err != nil {
+		return nil, err
+	}
+	gz.Close()
+	return bf.Bytes(), nil
 }

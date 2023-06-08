@@ -1,10 +1,12 @@
 package handlers
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
 
+	"github.com/amidvn/go-metrics/internal/models"
 	"github.com/amidvn/go-metrics/internal/storage"
 	"github.com/labstack/echo/v4"
 )
@@ -32,8 +34,30 @@ func PostWebhook(s *storage.MemStorage) echo.HandlerFunc {
 			return ctx.String(http.StatusBadRequest, "Invalid metric type. Can only be 'gauge' or 'counter'")
 		}
 
-		ctx.Response().Header().Set("Content-Type", "text/plain; charset=utf-8")
+		ctx.Response().Header().Set("Content-Type", "text/html; charset=utf-8")
 		return ctx.String(http.StatusOK, "")
+	}
+}
+
+func UpdateJSON(s *storage.MemStorage) echo.HandlerFunc {
+	return func(ctx echo.Context) error {
+		var metric models.Metrics
+		err := json.NewDecoder(ctx.Request().Body).Decode(&metric)
+		if err != nil {
+			return ctx.String(http.StatusBadRequest, fmt.Sprintf("Error in JSON decode: %s", err))
+		}
+
+		switch metric.MType {
+		case "counter":
+			s.UpdateCounter(metric.ID, *metric.Delta)
+		case "gauge":
+			s.UpdateGauge(metric.ID, *metric.Value)
+		default:
+			return ctx.String(http.StatusNotFound, "Invalid metric type. Can only be 'gauge' or 'counter'")
+		}
+
+		ctx.Response().Header().Set("Content-Type", "application/json")
+		return ctx.JSON(http.StatusOK, metric)
 	}
 }
 
@@ -52,8 +76,33 @@ func MetricsValue(s *storage.MemStorage) echo.HandlerFunc {
 	}
 }
 
+func GetValueJSON(s *storage.MemStorage) echo.HandlerFunc {
+	return func(ctx echo.Context) error {
+		var metric models.Metrics
+		err := json.NewDecoder(ctx.Request().Body).Decode(&metric)
+		if err != nil {
+			return ctx.String(http.StatusBadRequest, fmt.Sprintf("Error in JSON decode: %s", err))
+		}
+
+		switch metric.MType {
+		case "counter":
+			value := s.GetCounterValue(metric.ID)
+			metric.Delta = &value
+		case "gauge":
+			value := s.GetGaugeValue(metric.ID)
+			metric.Value = &value
+		default:
+			return ctx.String(http.StatusNotFound, "Invalid metric type. Can only be 'gauge' or 'counter'")
+		}
+
+		ctx.Response().Header().Set("Content-Type", "application/json")
+		return ctx.JSON(http.StatusOK, metric)
+	}
+}
+
 func AllMetrics(s *storage.MemStorage) echo.HandlerFunc {
 	return func(ctx echo.Context) error {
+		ctx.Response().Header().Set("Content-Type", "text/html")
 		err := ctx.String(http.StatusOK, s.AllMetrics())
 		if err != nil {
 			return err

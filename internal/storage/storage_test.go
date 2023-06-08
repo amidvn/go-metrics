@@ -7,7 +7,7 @@ import (
 )
 
 func TestUpdateCounter(t *testing.T) {
-	s := New()
+	s := New(300, "", false)
 	testCases := []struct {
 		name        string
 		metricsName string
@@ -29,7 +29,7 @@ func TestUpdateCounter(t *testing.T) {
 }
 
 func TestUpdateGauge(t *testing.T) {
-	s := New()
+	s := New(300, "", false)
 	testCases := []struct {
 		name        string
 		metricsName string

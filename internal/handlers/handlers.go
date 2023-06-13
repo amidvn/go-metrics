@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/amidvn/go-metrics/internal/database"
 	"github.com/amidvn/go-metrics/internal/models"
 	"github.com/amidvn/go-metrics/internal/storage"
 	"github.com/labstack/echo/v4"
@@ -104,6 +105,24 @@ func AllMetrics(s *storage.MemStorage) echo.HandlerFunc {
 	return func(ctx echo.Context) error {
 		ctx.Response().Header().Set("Content-Type", "text/html")
 		err := ctx.String(http.StatusOK, s.AllMetrics())
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}
+}
+
+func PingDB(db *database.DBConnection) echo.HandlerFunc {
+	return func(ctx echo.Context) error {
+		ctx.Response().Header().Set("Content-Type", "text/html")
+		err := database.CheckConnection(db)
+		if err == nil {
+			ctx.String(http.StatusOK, "Connection database is OK")
+		} else {
+			ctx.String(http.StatusInternalServerError, "Connection database is OK")
+		}
+
 		if err != nil {
 			return err
 		}

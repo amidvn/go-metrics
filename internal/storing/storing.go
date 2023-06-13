@@ -1,4 +1,4 @@
-package apiserver
+package storing
 
 import (
 	"encoding/json"
@@ -10,7 +10,7 @@ import (
 	"github.com/amidvn/go-metrics/internal/storage"
 )
 
-func loadStorageFromFile(s *storage.MemStorage, filePath string) {
+func Restore(s *storage.MemStorage, filePath string) {
 	file, err := os.ReadFile(filePath)
 	if err != nil {
 		fmt.Println(err)
@@ -29,7 +29,7 @@ func loadStorageFromFile(s *storage.MemStorage, filePath string) {
 	}
 }
 
-func storing(s *storage.MemStorage, filePath string, storeInterval int) {
+func Dump(s *storage.MemStorage, filePath string, storeInterval int) {
 	dir, _ := path.Split(filePath)
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
 		err := os.MkdirAll(dir, 0666)
@@ -40,11 +40,11 @@ func storing(s *storage.MemStorage, filePath string, storeInterval int) {
 	pollTicker := time.NewTicker(time.Duration(storeInterval) * time.Second)
 	defer pollTicker.Stop()
 	for range pollTicker.C {
-		saveStorageToFile(s, filePath)
+		saveJSON(s, filePath)
 	}
 }
 
-func saveStorageToFile(s *storage.MemStorage, filePath string) error {
+func saveJSON(s *storage.MemStorage, filePath string) error {
 
 	var metrics storage.AllMetrics
 

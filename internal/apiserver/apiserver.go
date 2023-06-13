@@ -21,7 +21,7 @@ type Conf struct {
 	StoreInterval int    `env:"STORE_INTERVAL"`
 	FilePath      string `env:"FILE_STORAGE_PATH"`
 	Restore       bool   `env:"RESTORE"`
-	DbDSN         string `env:"DATABASE_DSN"`
+	DatabaseDSN   string `env:"DATABASE_DSN"`
 }
 
 type APIServer struct {
@@ -41,7 +41,7 @@ func New() *APIServer {
 	flag.IntVar(&conf.StoreInterval, "i", 300, "interval for saving metrics on the server")
 	flag.StringVar(&conf.FilePath, "f", "/tmp/metrics-db.json", "file storage path for saving data")
 	flag.BoolVar(&conf.Restore, "r", true, "need to load data at startup")
-	flag.StringVar(&conf.DbDSN, "d", "", "file storage path for saving data")
+	flag.StringVar(&conf.DatabaseDSN, "d", "", "database Data Source Name")
 	flag.Parse()
 
 	err := env.Parse(&conf)
@@ -55,7 +55,7 @@ func New() *APIServer {
 	a.storage = storage.New(conf.StoreInterval, conf.FilePath, conf.Restore)
 	a.echo = echo.New()
 
-	a.db = database.New(conf.DbDSN)
+	a.db = database.New(conf.DatabaseDSN)
 
 	logger, err := zap.NewDevelopment()
 	if err != nil {

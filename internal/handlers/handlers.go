@@ -118,9 +118,9 @@ func PingDB(db *database.DBConnection) echo.HandlerFunc {
 		ctx.Response().Header().Set("Content-Type", "text/html")
 		err := database.CheckConnection(db)
 		if err == nil {
-			ctx.String(http.StatusOK, "Connection database is OK")
+			err = ctx.String(http.StatusOK, "Connection database is OK")
 		} else {
-			ctx.String(http.StatusInternalServerError, "Connection database is OK")
+			err = ctx.String(http.StatusInternalServerError, "Connection database is OK")
 		}
 
 		if err != nil {

@@ -2,30 +2,37 @@ package database
 
 import (
 	"database/sql"
+	"fmt"
 
 	_ "github.com/jackc/pgx/v5"
 	"github.com/pkg/errors"
 )
 
 type DBConnection struct {
-	DSN string
+	db *sql.DB
 }
 
 func New(dsn string) *DBConnection {
-	db := &DBConnection{}
-	db.DSN = dsn
+	dbc := &DBConnection{}
 
-	return db
+	db, err := sql.Open("pgx", dsn)
+	if err != nil {
+		fmt.Println(err)
+		dbc.db = nil
+	} else {
+		dbc.db = db
+	}
+
+	return dbc
 }
 
-func CheckConnection(db *DBConnection) error {
-	if db.DSN == "" {
-		return errors.New("Empty connection string")
+func CheckConnection(dbc *DBConnection) error {
+	if dbc.db != nil {
+		err := dbc.db.Ping()
+		if err != nil {
+			return err
+		}
+		return nil
 	}
-	dbc, err := sql.Open("pgx", db.DSN)
-	if err != nil {
-		return err
-	}
-	defer dbc.Close()
-	return nil
+	return errors.New("Empty connection string")
 }

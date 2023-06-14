@@ -42,13 +42,15 @@ func New(dsn string) *DBConnection {
 	}
 
 	// checkint if tables exist or not
-	_, tableCheck := dbc.DB.Query("SELECT * FROM counter_metrics LIMIT 1;")
-	if tableCheck != nil {
-		dbc.DB.Exec("CREATE TABLE counter_metrics (name char(30) UNIQUE, value integer);")
-	}
-	_, tableCheck = dbc.DB.Query("SELECT * FROM gauge_metrics LIMIT 1;")
-	if tableCheck != nil {
-		dbc.DB.Exec("CREATE TABLE gauge_metrics (name char(30) UNIQUE, value double precision);")
+	if dbc.DB != nil {
+		_, tableCheck := dbc.DB.Query("SELECT * FROM counter_metrics LIMIT 1;")
+		if tableCheck != nil {
+			dbc.DB.Exec("CREATE TABLE counter_metrics (name char(30) UNIQUE, value integer);")
+		}
+		_, tableCheck = dbc.DB.Query("SELECT * FROM gauge_metrics LIMIT 1;")
+		if tableCheck != nil {
+			dbc.DB.Exec("CREATE TABLE gauge_metrics (name char(30) UNIQUE, value double precision);")
+		}
 	}
 	return dbc
 }
@@ -65,6 +67,10 @@ func CheckConnection(dbc *DBConnection) error {
 }
 
 func Restore(s *storage.MemStorage, dbc *DBConnection) {
+	if dbc.DB == nil {
+		return
+	}
+
 	rowsCounter, err := dbc.DB.Query("SELECT name, value FROM counter_metrics;")
 	if err != nil {
 		fmt.Println(err)

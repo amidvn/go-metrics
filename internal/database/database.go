@@ -27,21 +27,27 @@ type gaugeMetric struct {
 func New(dsn string) *DBConnection {
 	dbc := &DBConnection{}
 
+	if dsn == "" {
+		dbc.DB = nil
+		return dbc
+	}
+
 	db, err := sql.Open("pgx", dsn)
 	if err != nil {
 		fmt.Println(err)
 		dbc.DB = nil
+		return dbc
 	} else {
 		dbc.DB = db
 	}
 
 	// checkint if tables exist or not
-	_, table_check := dbc.DB.Query("SELECT * FROM counter_metrics LIMIT 1;")
-	if table_check != nil {
+	_, tableCheck := dbc.DB.Query("SELECT * FROM counter_metrics LIMIT 1;")
+	if tableCheck != nil {
 		dbc.DB.Exec("CREATE TABLE counter_metrics (name char(30) UNIQUE, value integer);")
 	}
-	_, table_check = dbc.DB.Query("SELECT * FROM gauge_metrics LIMIT 1;")
-	if table_check != nil {
+	_, tableCheck = dbc.DB.Query("SELECT * FROM gauge_metrics LIMIT 1;")
+	if tableCheck != nil {
 		dbc.DB.Exec("CREATE TABLE gauge_metrics (name char(30) UNIQUE, value double precision);")
 	}
 	return dbc

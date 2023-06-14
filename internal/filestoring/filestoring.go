@@ -1,4 +1,4 @@
-package storing
+package filestoring
 
 import (
 	"encoding/json"

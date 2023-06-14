@@ -6,10 +6,10 @@ import (
 	"log"
 
 	"github.com/amidvn/go-metrics/internal/database"
+	"github.com/amidvn/go-metrics/internal/filestoring"
 	"github.com/amidvn/go-metrics/internal/handlers"
 	"github.com/amidvn/go-metrics/internal/middlewares"
 	"github.com/amidvn/go-metrics/internal/storage"
-	"github.com/amidvn/go-metrics/internal/storing"
 	"github.com/caarlos0/env/v6"
 	"github.com/labstack/echo/v4"
 
@@ -65,12 +65,17 @@ func New() *APIServer {
 
 	a.logger = *logger.Sugar()
 
-	if conf.FilePath != "" {
+	if a.db.DB != nil {
+		database.Restore(a.storage, a.db)
+		if conf.StoreInterval != 0 {
+			go database.Dump(a.storage, a.db, conf.StoreInterval)
+		}
+	} else if conf.FilePath != "" {
 		if conf.Restore {
-			storing.Restore(a.storage, conf.FilePath)
+			filestoring.Restore(a.storage, conf.FilePath)
 		}
 		if conf.StoreInterval != 0 {
-			go storing.Dump(a.storage, conf.FilePath, conf.StoreInterval)
+			go filestoring.Dump(a.storage, conf.FilePath, conf.StoreInterval)
 		}
 	}
 

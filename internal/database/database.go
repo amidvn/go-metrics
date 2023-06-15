@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"time"
@@ -43,11 +44,12 @@ func New(dsn string) *DBConnection {
 
 	// checkint if tables exist or not
 	if dbc.DB != nil {
-		_, tableCheck := dbc.DB.Query("SELECT * FROM counter_metrics LIMIT 1;")
+		ctx := context.Background()
+		_, tableCheck := dbc.DB.QueryContext(ctx, "SELECT * FROM counter_metrics LIMIT 1;")
 		if tableCheck != nil {
 			dbc.DB.Exec("CREATE TABLE counter_metrics (name char(30) UNIQUE, value integer);")
 		}
-		_, tableCheck = dbc.DB.Query("SELECT * FROM gauge_metrics LIMIT 1;")
+		_, tableCheck = dbc.DB.QueryContext(ctx, "SELECT * FROM gauge_metrics LIMIT 1;")
 		if tableCheck != nil {
 			dbc.DB.Exec("CREATE TABLE gauge_metrics (name char(30) UNIQUE, value double precision);")
 		}
@@ -71,7 +73,8 @@ func Restore(s *storage.MemStorage, dbc *DBConnection) {
 		return
 	}
 
-	rowsCounter, err := dbc.DB.Query("SELECT name, value FROM counter_metrics;")
+	ctx := context.Background()
+	rowsCounter, err := dbc.DB.QueryContext(ctx, "SELECT name, value FROM counter_metrics;")
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -86,7 +89,7 @@ func Restore(s *storage.MemStorage, dbc *DBConnection) {
 		s.UpdateCounter(cm.name, cm.value)
 	}
 
-	rowsGauge, err := dbc.DB.Query("SELECT name, value FROM gauge_metrics;")
+	rowsGauge, err := dbc.DB.QueryContext(ctx, "SELECT name, value FROM gauge_metrics;")
 	if err != nil {
 		fmt.Println(err)
 	}

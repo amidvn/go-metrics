@@ -78,6 +78,9 @@ func Restore(s *storage.MemStorage, dbc *DBConnection) {
 	if err != nil {
 		fmt.Println(err)
 	}
+	if rowsCounter.Err() != nil {
+		fmt.Println(rowsCounter.Err())
+	}
 	defer rowsCounter.Close()
 
 	for rowsCounter.Next() {

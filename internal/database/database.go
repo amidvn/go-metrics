@@ -44,15 +44,8 @@ func New(dsn string) *DBConnection {
 
 	// checkint if tables exist or not
 	if dbc.DB != nil {
-		ctx := context.Background()
-		_, tableCheck := dbc.DB.QueryContext(ctx, "SELECT * FROM counter_metrics LIMIT 1;")
-		if tableCheck != nil {
-			dbc.DB.Exec("CREATE TABLE counter_metrics (name char(30) UNIQUE, value integer);")
-		}
-		_, tableCheck = dbc.DB.QueryContext(ctx, "SELECT * FROM gauge_metrics LIMIT 1;")
-		if tableCheck != nil {
-			dbc.DB.Exec("CREATE TABLE gauge_metrics (name char(30) UNIQUE, value double precision);")
-		}
+		dbc.DB.Exec("CREATE TABLE [IF NOT EXIST] counter_metrics (name char(30) UNIQUE, value integer);")
+		dbc.DB.Exec("CREATE TABLE [IF NOT EXIST] gauge_metrics (name char(30) UNIQUE, value double precision);")
 	}
 	return dbc
 }
@@ -78,8 +71,8 @@ func Restore(s *storage.MemStorage, dbc *DBConnection) {
 	if err != nil {
 		fmt.Println(err)
 	}
-	if rowsCounter.Err() != nil {
-		fmt.Println(rowsCounter.Err())
+	if err := rowsCounter.Err(); err != nil {
+		fmt.Println(err)
 	}
 	defer rowsCounter.Close()
 
@@ -94,6 +87,9 @@ func Restore(s *storage.MemStorage, dbc *DBConnection) {
 
 	rowsGauge, err := dbc.DB.QueryContext(ctx, "SELECT name, value FROM gauge_metrics;")
 	if err != nil {
+		fmt.Println(err)
+	}
+	if err := rowsGauge.Err(); err != nil {
 		fmt.Println(err)
 	}
 	defer rowsGauge.Close()

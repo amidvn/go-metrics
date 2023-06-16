@@ -44,8 +44,8 @@ func New(dsn string) *DBConnection {
 
 	// checkint if tables exist or not
 	if dbc.DB != nil {
-		dbc.DB.Exec("CREATE TABLE [IF NOT EXIST] counter_metrics (name char(30) UNIQUE, value integer);")
-		dbc.DB.Exec("CREATE TABLE [IF NOT EXIST] gauge_metrics (name char(30) UNIQUE, value double precision);")
+		dbc.DB.Exec("CREATE TABLE IF NOT EXISTS counter_metrics (name char(30) UNIQUE, value integer);")
+		dbc.DB.Exec("CREATE TABLE IF NOT EXISTS gauge_metrics (name char(30) UNIQUE, value double precision);")
 	}
 	return dbc
 }

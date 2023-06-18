@@ -91,7 +91,6 @@ func (s *MemStorage) UpdateCounterData(counterData map[string]counter) {
 
 func (s *MemStorage) StoreBatch(metrics []models.Metrics) {
 	for _, m := range metrics {
-		fmt.Println(m)
 		switch m.MType {
 		case "counter":
 			s.UpdateCounter(m.ID, *m.Delta)

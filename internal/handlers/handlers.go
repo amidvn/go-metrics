@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 
@@ -135,8 +136,8 @@ func UpdatesJSON(s *storage.MemStorage) echo.HandlerFunc {
 	return func(ctx echo.Context) error {
 		metrics := make([]models.Metrics, 0)
 		err := json.NewDecoder(ctx.Request().Body).Decode(&metrics)
-		if err != nil {
-			fmt.Println(err)
+		fmt.Println("error", err)
+		if err != nil && err != io.EOF {
 			return ctx.String(http.StatusBadRequest, fmt.Sprintf("Error in JSON decode: %s", err))
 		}
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/amidvn/go-metrics/internal/storage"
@@ -82,7 +83,7 @@ func Restore(s *storage.MemStorage, dbc *DBConnection) {
 		if err != nil {
 			fmt.Println(err)
 		}
-		s.UpdateCounter(cm.name, cm.value)
+		s.UpdateCounter(strings.ReplaceAll(cm.name, " ", ""), cm.value)
 	}
 
 	rowsGauge, err := dbc.DB.QueryContext(ctx, "SELECT name, value FROM gauge_metrics;")
@@ -100,7 +101,7 @@ func Restore(s *storage.MemStorage, dbc *DBConnection) {
 		if err != nil {
 			fmt.Println(err)
 		}
-		s.UpdateGauge(gm.name, gm.value)
+		s.UpdateGauge(strings.ReplaceAll(gm.name, " ", ""), gm.value)
 	}
 }
 

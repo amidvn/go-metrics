@@ -139,6 +139,8 @@ func UpdatesJSON(s *storage.MemStorage) echo.HandlerFunc {
 			return ctx.String(http.StatusBadRequest, fmt.Sprintf("Error in JSON decode: %s", err))
 		}
 
+		s.StoreButch(metrics)
+
 		ctx.Response().Header().Set("Content-Type", "application/json")
 		return ctx.JSON(http.StatusOK, metrics)
 	}

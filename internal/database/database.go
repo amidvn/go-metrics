@@ -113,6 +113,10 @@ func Dump(s *storage.MemStorage, dbc *DBConnection, storeInterval int) {
 }
 
 func saveMetrics(s *storage.MemStorage, dbc *DBConnection) error {
+	tx, err := dbc.DB.Begin()
+	if err != nil {
+		return err
+	}
 	var query string
 	query = "TRUNCATE counter_metrics, gauge_metrics; "
 	for k, v := range s.GetCounterData() {
@@ -123,9 +127,10 @@ func saveMetrics(s *storage.MemStorage, dbc *DBConnection) error {
 		query += fmt.Sprintf("INSERT INTO gauge_metrics (name, value) VALUES ('%s', %f); ", k, v)
 	}
 
-	_, err := dbc.DB.Exec(query)
+	_, err = tx.Exec(query)
 	if err != nil {
+		tx.Rollback()
 		return err
 	}
-	return nil
+	return tx.Commit()
 }

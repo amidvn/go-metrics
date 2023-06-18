@@ -88,6 +88,7 @@ func New() *APIServer {
 	a.echo.POST("/update/", handlers.UpdateJSON(a.storage))
 	a.echo.POST("/update/:typeM/:nameM/:valueM", handlers.PostWebhook(a.storage))
 	a.echo.GET("/ping", handlers.PingDB(a.db))
+	a.echo.POST("/updates/", handlers.UpdatesJSON(a.storage))
 
 	return a
 }

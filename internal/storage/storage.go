@@ -89,14 +89,14 @@ func (s *MemStorage) UpdateCounterData(counterData map[string]counter) {
 	s.counterData = counterData
 }
 
-func (s *MemStorage) StoreButch(metrics []models.Metrics) {
+func (s *MemStorage) StoreBatch(metrics []models.Metrics) {
 	for _, m := range metrics {
+		fmt.Println(m)
 		switch m.MType {
 		case "counter":
 			s.UpdateCounter(m.ID, *m.Delta)
 		case "gauge":
 			s.UpdateGauge(m.ID, *m.Value)
 		}
-
 	}
 }

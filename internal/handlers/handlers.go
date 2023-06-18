@@ -136,10 +136,11 @@ func UpdatesJSON(s *storage.MemStorage) echo.HandlerFunc {
 		metrics := make([]models.Metrics, 0)
 		err := json.NewDecoder(ctx.Request().Body).Decode(&metrics)
 		if err != nil {
+			fmt.Println(err)
 			return ctx.String(http.StatusBadRequest, fmt.Sprintf("Error in JSON decode: %s", err))
 		}
 
-		s.StoreButch(metrics)
+		s.StoreBatch(metrics)
 
 		ctx.Response().Header().Set("Content-Type", "application/json")
 		return ctx.JSON(http.StatusOK, metrics)

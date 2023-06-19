@@ -106,17 +106,23 @@ func getMetrics() {
 func postQueries() {
 	url := fmt.Sprintf("http://%s/update/", cfg.AddressServer)
 
+	retryClient := retryablehttp.NewClient()
+	retryClient.RetryMax = retryMax
+	retryClient.RetryWaitMin = retryWaitMin
+	retryClient.RetryWaitMax = retryWaitMax
+	retryClient.Backoff = linearBackoff
+
 	for k, v := range valuesGauge {
-		postJSON(url, models.Metrics{ID: k, MType: "gauge", Value: &v})
+		postJSON(retryClient, url, models.Metrics{ID: k, MType: "gauge", Value: &v})
 	}
 	pc := int64(pollCount)
-	postJSON(url, models.Metrics{ID: "PollCount", MType: "counter", Delta: &pc})
+	postJSON(retryClient, url, models.Metrics{ID: "PollCount", MType: "counter", Delta: &pc})
 	r := rand.Float64()
-	postJSON(url, models.Metrics{ID: "RandomValue", MType: "gauge", Value: &r})
+	postJSON(retryClient, url, models.Metrics{ID: "RandomValue", MType: "gauge", Value: &r})
 	pollCount = 0
 }
 
-func postJSON(url string, m models.Metrics) {
+func postJSON(r *retryablehttp.Client, url string, m models.Metrics) {
 	js, err := json.Marshal(m)
 	if err != nil {
 		fmt.Println(err)
@@ -127,12 +133,6 @@ func postJSON(url string, m models.Metrics) {
 		fmt.Println(err)
 	}
 
-	retryClient := retryablehttp.NewClient()
-	retryClient.RetryMax = retryMax
-	retryClient.RetryWaitMin = retryWaitMin
-	retryClient.RetryWaitMax = retryWaitMax
-	retryClient.Backoff = linearBackoff
-
 	req, err := retryablehttp.NewRequest("POST", url, gz)
 	if err != nil {
 		fmt.Println(err)
@@ -140,7 +140,7 @@ func postJSON(url string, m models.Metrics) {
 
 	req.Header.Add("content-type", "application/json")
 	req.Header.Add("content-encoding", "gzip")
-	resp, err := retryClient.Do(req)
+	resp, err := r.Do(req)
 	if err != nil {
 		fmt.Println(err)
 	}

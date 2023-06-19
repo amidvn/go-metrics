@@ -8,12 +8,13 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
+	"net/http"
 	"runtime"
 	"time"
 
 	"github.com/amidvn/go-metrics/internal/models"
 	"github.com/caarlos0/env/v6"
-	"github.com/levigross/grequests"
+	"github.com/hashicorp/go-retryablehttp"
 )
 
 type Config struct {
@@ -21,6 +22,12 @@ type Config struct {
 	ReportInterval int    `env:"REPORT_INTERVAL"`
 	AddressServer  string `env:"ADDRESS"`
 }
+
+const (
+	retryMax     int           = 3
+	retryWaitMin time.Duration = time.Second * 1
+	retryWaitMax time.Duration = time.Second * 5
+)
 
 var cfg Config
 
@@ -99,17 +106,23 @@ func getMetrics() {
 func postQueries() {
 	url := fmt.Sprintf("http://%s/update/", cfg.AddressServer)
 
+	retryClient := retryablehttp.NewClient()
+	retryClient.RetryMax = retryMax
+	retryClient.RetryWaitMin = retryWaitMin
+	retryClient.RetryWaitMax = retryWaitMax
+	retryClient.Backoff = linearBackoff
+
 	for k, v := range valuesGauge {
-		postJSON(url, models.Metrics{ID: k, MType: "gauge", Value: &v})
+		postJSON(retryClient, url, models.Metrics{ID: k, MType: "gauge", Value: &v})
 	}
 	pc := int64(pollCount)
-	postJSON(url, models.Metrics{ID: "PollCount", MType: "counter", Delta: &pc})
+	postJSON(retryClient, url, models.Metrics{ID: "PollCount", MType: "counter", Delta: &pc})
 	r := rand.Float64()
-	postJSON(url, models.Metrics{ID: "RandomValue", MType: "gauge", Value: &r})
+	postJSON(retryClient, url, models.Metrics{ID: "RandomValue", MType: "gauge", Value: &r})
 	pollCount = 0
 }
 
-func postJSON(url string, m models.Metrics) {
+func postJSON(r *retryablehttp.Client, url string, m models.Metrics) {
 	js, err := json.Marshal(m)
 	if err != nil {
 		fmt.Println(err)
@@ -120,12 +133,18 @@ func postJSON(url string, m models.Metrics) {
 		fmt.Println(err)
 	}
 
-	grequests.Post(url,
-		&grequests.RequestOptions{
-			Headers: map[string]string{
-				"content-type":     "application/json",
-				"content-encoding": "gzip",
-			}, JSON: gz})
+	req, err := retryablehttp.NewRequest("POST", url, gz)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	req.Header.Add("content-type", "application/json")
+	req.Header.Add("content-encoding", "gzip")
+	resp, err := r.Do(req)
+	if err != nil {
+		fmt.Println(err)
+	}
+	defer resp.Body.Close()
 }
 
 func compress(b []byte) ([]byte, error) {
@@ -140,4 +159,9 @@ func compress(b []byte) ([]byte, error) {
 	}
 	gz.Close()
 	return bf.Bytes(), nil
+}
+
+func linearBackoff(min, max time.Duration, attemptNum int, resp *http.Response) time.Duration {
+	sleepTime := min + min*time.Duration(2*attemptNum)
+	return sleepTime
 }

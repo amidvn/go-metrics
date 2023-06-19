@@ -3,6 +3,8 @@ package storage
 import (
 	"fmt"
 	"net/http"
+
+	"github.com/amidvn/go-metrics/internal/models"
 )
 
 type gauge float64
@@ -85,4 +87,15 @@ func (s *MemStorage) UpdateGaugeData(gaugeData map[string]gauge) {
 
 func (s *MemStorage) UpdateCounterData(counterData map[string]counter) {
 	s.counterData = counterData
+}
+
+func (s *MemStorage) StoreBatch(metrics []models.Metrics) {
+	for _, m := range metrics {
+		switch m.MType {
+		case "counter":
+			s.UpdateCounter(m.ID, *m.Delta)
+		case "gauge":
+			s.UpdateGauge(m.ID, *m.Value)
+		}
+	}
 }

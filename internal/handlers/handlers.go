@@ -2,10 +2,13 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 
+	"github.com/amidvn/go-metrics/internal/database"
 	"github.com/amidvn/go-metrics/internal/models"
 	"github.com/amidvn/go-metrics/internal/storage"
 	"github.com/labstack/echo/v4"
@@ -109,5 +112,37 @@ func AllMetrics(s *storage.MemStorage) echo.HandlerFunc {
 		}
 
 		return nil
+	}
+}
+
+func PingDB(db *database.DBConnection) echo.HandlerFunc {
+	return func(ctx echo.Context) error {
+		ctx.Response().Header().Set("Content-Type", "text/html")
+		err := database.CheckConnection(db)
+		if err == nil {
+			err = ctx.String(http.StatusOK, "Connection database is OK")
+		} else {
+			err = ctx.String(http.StatusInternalServerError, "Connection database is OK")
+		}
+
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}
+}
+
+func UpdatesJSON(s *storage.MemStorage) echo.HandlerFunc {
+	return func(ctx echo.Context) error {
+		metrics := make([]models.Metrics, 0)
+		err := json.NewDecoder(ctx.Request().Body).Decode(&metrics)
+		if err != nil && !errors.Is(err, io.EOF) {
+			return ctx.String(http.StatusBadRequest, fmt.Sprintf("Error in JSON decode: %s", err))
+		}
+
+		s.StoreBatch(metrics)
+
+		return ctx.NoContent(http.StatusOK)
 	}
 }
